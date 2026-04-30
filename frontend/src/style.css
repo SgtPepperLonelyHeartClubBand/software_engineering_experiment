@@ -1,0 +1,9 @@
+/* src/style.css */
+@import "tailwindcss";
+
+/* 在 v4 中，我们直接使用 @theme 指令来扩展主题色 */
+@theme {
+  --color-seu-green: #005A3C;
+  --color-seu-yellow: #FFD700;
+  --color-bg-gray: #F7F8FA;
+}
