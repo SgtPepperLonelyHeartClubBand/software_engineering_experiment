@@ -66,24 +66,20 @@
       </div>
     </div>
 
-    <!-- 3. 底部导航栏 -->
-    <van-tabbar v-model="activeTab" active-color="#005A3C" inactive-color="#94a3b8" route border>
-      <van-tabbar-item icon="shop-o" to="/home">集市</van-tabbar-item>
-      <!-- 强调发布按钮：为了美观，使用了品牌色 -->
-      <van-tabbar-item icon="plus" class="font-bold text-[#005A3C]">发布</van-tabbar-item>
-      <van-tabbar-item icon="chat-o" badge="2">消息</van-tabbar-item>
-      <van-tabbar-item icon="user-o">我的</van-tabbar-item>
-    </van-tabbar>
-
+    <AppTabbar />
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import AppTabbar from './AppTabbar.vue'
 
+const router = useRouter()
 const searchKeyword = ref('')
 const activeCategory = ref(0)
-const activeTab = ref(0)
+
+const goToDetail = (id) => router.push(`/item/${id}`)
 
 // 模拟【在售】商品数据
 const goodsList = ref([

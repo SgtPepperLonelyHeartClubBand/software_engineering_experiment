@@ -11,7 +11,7 @@
 
     <!-- 2. 图片轮播 -->
     <van-swipe class="h-80 bg-white" :autoplay="3000" indicator-color="#005A3C">
-      <van-swipe-item v-for="(img, index) in itemData.images" :key="index">
+      <van-swipe-item v-for="(img, index) in itemImages" :key="index">
         <img :src="img" class="w-full h-full object-cover" />
       </van-swipe-item>
     </van-swipe>
@@ -73,18 +73,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showSuccessToast, showToast } from 'vant'
 
 const router = useRouter()
-const route = useRoute() // 用于获取 URL 上的参数
-
+const route = useRoute()
 const showConfirm = ref(false)
 
-// 模拟详情数据
-const itemData = ref({
-  id: '',
+const itemData = reactive({
+  id: route.params.id ?? '1',
   title: '99新《数据库系统概论》王珊版，笔记很少',
   price: '25.00',
   condition: '9成新',
@@ -98,35 +96,19 @@ const itemData = ref({
   location: '九龙湖校区 / 梅园'
 })
 
-onMounted(() => {
-  // 真实场景下，我们会根据 route.params.id 去后端请求详情数据
-  itemData.value.id = route.params.id || '1'
-})
+const itemImages = computed(() =>
+  itemData.images.length
+    ? itemData.images
+    : ['https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg']
+)
 
-const goBack = () => {
-  router.back()
-}
+const goBack = () => router.back()
+const goToChat = () => router.push('/chat/1')
+const reportItem = () => showToast('已进入违规举报流程')
 
-// 模拟跳转到聊天页
-const goToChat = () => {
-  showToast('跳转到私信聊天页')
-  // 之后实现：router.push(`/chat/${itemData.value.sellerId}`)
-}
-
-// 模拟举报用例（设计文档中提到的扩展点）
-const reportItem = () => {
-  showToast('已进入违规举报流程')
-}
-
-// 触发 FSM 流转
 const confirmLock = () => {
   showConfirm.value = false
-  // 真实场景下：向后端发起 axios.post('/api/order/lock', { itemId: itemData.value.id })
   showSuccessToast('预定成功，快去私信卖家吧！')
-  
-  // 预定成功后跳转到聊天页面
-  setTimeout(() => {
-    goToChat()
-  }, 1500)
+  setTimeout(goToChat, 1500)
 }
 </script>
