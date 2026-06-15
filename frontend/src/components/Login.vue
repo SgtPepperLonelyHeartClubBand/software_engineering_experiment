@@ -91,7 +91,9 @@
 <script setup>
 import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast, showSuccessToast, showFailToast } from 'vant' 
+import { showToast, showSuccessToast, showFailToast } from 'vant'
+import { sendCode, login } from '@/api/auth'
+import { setToken, setDevUserId, ApiError } from '@/api/request'
 
 const router = useRouter()
 const studentId = ref('')
@@ -119,10 +121,9 @@ const handleSendCode = async () => {
   isSending.value = true
   
   try {
-    // 模拟 API 请求
-    await new Promise(resolve => setTimeout(resolve, 800)) 
+    await sendCode(studentId.value)
 
-    showSuccessToast('验证码已发送')
+    showSuccessToast(`验证码已发送（开发期固定码：123456）`)
     
     // 开启 60s 倒计时
     countdown.value = 60
@@ -135,7 +136,8 @@ const handleSendCode = async () => {
       }
     }, 1000)
   } catch (error) {
-    showFailToast('发送失败，请稍后重试')
+    const message = error instanceof ApiError ? error.message : '发送失败，请稍后重试'
+    showFailToast(message)
   } finally {
     isSending.value = false
   }
@@ -155,20 +157,23 @@ const handleLogin = async () => {
   isLoggingIn.value = true
 
   try {
-    // 模拟登录 API 请求
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
+    const result = await login(studentId.value, verifyCode.value)
+
+    setToken(result.token)
+    if (result.userId) {
+      setDevUserId(result.userId)
+    }
+
     showSuccessToast('登录成功')
-    
-    // 路由跳转判断逻辑
-    const isNewUser = true 
-    if (isNewUser) {
-      router.push('/onboarding') 
+
+    if (result.isNewUser) {
+      router.push('/onboarding')
     } else {
-      router.push('/home') 
+      router.push('/home')
     }
   } catch (error) {
-    showFailToast('验证码错误或已过期')
+    const message = error instanceof ApiError ? error.message : '验证码错误或已过期'
+    showFailToast(message)
   } finally {
     isLoggingIn.value = false
   }

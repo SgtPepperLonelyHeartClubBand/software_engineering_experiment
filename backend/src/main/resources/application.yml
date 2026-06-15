@@ -1,0 +1,27 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/seu_market?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+    username: root
+    password: "050516"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  jackson:
+    time-zone: Asia/Shanghai
+
+jwt:
+  secret: seu-market-dev-secret-change-in-production-must-be-long-enough
+  expiration-ms: 604800000
+
+auth:
+  dev-fixed-code: "123456"
+  code-expiration-minutes: 5
+  send-interval-seconds: 60
