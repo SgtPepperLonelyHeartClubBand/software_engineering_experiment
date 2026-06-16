@@ -137,6 +137,14 @@ export function markChatAsRead(chatId) {
   if (chat) chat.unread = 0
 }
 
+export function markAllChatsAsRead() {
+  chats.value.forEach((c) => { c.unread = 0 })
+}
+
+export const unreadChatsCount = computed(() =>
+  chats.value.filter((c) => c.unread > 0).length
+)
+
 export function markNoticesAsRead() {
   notices.value.forEach((n) => { n.unread = false })
 }

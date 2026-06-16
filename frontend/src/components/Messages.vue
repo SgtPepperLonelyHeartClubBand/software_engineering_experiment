@@ -1,6 +1,16 @@
 <template>
   <div class="min-h-screen bg-[#F7F8FA] pb-[60px]">
-    <van-nav-bar title="消息" fixed placeholder />
+    <van-nav-bar title="消息" fixed placeholder>
+      <template #right>
+        <span
+          v-if="totalUnread > 0"
+          class="text-sm text-[#005A3C] font-medium active:opacity-70"
+          @click="handleMarkAllRead"
+        >
+          全部已读
+        </span>
+      </template>
+    </van-nav-bar>
 
     <van-tabs
       v-model:active="activeTab"
@@ -12,18 +22,22 @@
     >
       <van-tab>
         <template #title>
-          <span class="relative inline-flex items-center">
+          <span class="inline-flex items-center gap-1">
             私信
             <span
               v-if="chatUnreadBadge"
-              class="absolute -top-1.5 -right-3 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none"
+              class="min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none"
             >
               {{ chatUnreadBadge }}
             </span>
           </span>
         </template>
 
-        <van-swipe-cell v-for="chat in chats" :key="chat.id">
+        <div v-if="unreadChatsCount > 0" class="px-4 py-2 text-xs text-gray-400 bg-[#F7F8FA]">
+          未读消息 ({{ unreadChatsCount }})
+        </div>
+
+        <van-swipe-cell v-for="chat in sortedChats" :key="chat.id">
           <div
             @click="goToChat(chat.id)"
             class="flex items-center gap-3 px-4 py-3.5 bg-white active:bg-gray-50 transition-colors border-b border-gray-50"
@@ -39,7 +53,12 @@
             </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center justify-between mb-1">
-                <span class="font-bold text-sm text-gray-800">{{ chat.name }}</span>
+                <span
+                  class="text-sm"
+                  :class="chat.unread > 0 ? 'font-bold text-gray-900' : 'font-medium text-gray-700'"
+                >
+                  {{ chat.name }}
+                </span>
                 <span class="text-xs text-gray-400 shrink-0 ml-2">{{ chat.time }}</span>
               </div>
               <div class="flex items-center gap-2">
@@ -61,16 +80,24 @@
         </van-swipe-cell>
 
         <van-empty v-if="!chats.length" description="暂无私信，去集市逛逛吧" />
+        <div
+          v-else-if="unreadChatsCount === 0"
+          class="text-center text-xs text-gray-400 py-6"
+        >
+          全部已读
+        </div>
       </van-tab>
 
       <van-tab>
         <template #title>
-          <span class="relative inline-flex items-center">
+          <span class="inline-flex items-center gap-1">
             系统通知
             <span
-              v-if="noticeUnreadDot"
-              class="absolute -top-0.5 -right-2.5 w-2 h-2 bg-red-500 rounded-full"
-            />
+              v-if="noticeUnreadBadge"
+              class="min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none"
+            >
+              {{ noticeUnreadBadge }}
+            </span>
           </span>
         </template>
 
@@ -101,6 +128,13 @@
             </div>
           </div>
         </div>
+
+        <div
+          v-if="notices.length > 0 && totalNoticeUnread === 0"
+          class="text-center text-xs text-gray-400 py-6"
+        >
+          全部已读
+        </div>
       </van-tab>
     </van-tabs>
 
@@ -119,17 +153,28 @@ import {
   deleteChat,
   formatBadge,
   markChatAsRead,
+  markAllChatsAsRead,
   markNoticesAsRead,
   markNoticeAsRead,
   totalChatUnread,
-  totalNoticeUnread
+  totalNoticeUnread,
+  totalUnread,
+  unreadChatsCount
 } from '../stores/messages'
 
 const router = useRouter()
 const activeTab = ref(0)
 
 const chatUnreadBadge = computed(() => formatBadge(totalChatUnread.value))
-const noticeUnreadDot = computed(() => totalNoticeUnread.value > 0)
+const noticeUnreadBadge = computed(() => formatBadge(totalNoticeUnread.value))
+
+const sortedChats = computed(() =>
+  [...chats.value].sort((a, b) => {
+    if (a.unread > 0 && b.unread === 0) return -1
+    if (a.unread === 0 && b.unread > 0) return 1
+    return 0
+  })
+)
 
 const goToChat = (id) => {
   markChatAsRead(id)
@@ -138,6 +183,12 @@ const goToChat = (id) => {
 
 const readNotice = (id) => {
   markNoticeAsRead(id)
+}
+
+const handleMarkAllRead = () => {
+  markAllChatsAsRead()
+  markNoticesAsRead()
+  showToast({ message: '已全部标记为已读', position: 'top' })
 }
 
 const onTabChange = (index) => {

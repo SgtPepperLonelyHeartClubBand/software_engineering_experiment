@@ -1,9 +1,24 @@
 /* src/style.css */
 @import "tailwindcss";
 
-/* 在 v4 中，我们直接使用 @theme 指令来扩展主题色 */
 @theme {
   --color-seu-green: #005A3C;
   --color-seu-yellow: #FFD700;
   --color-bg-gray: #F7F8FA;
+}
+
+/* 安全区域适配（iPhone X+ 等全面屏） */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* 全局触摸优化 */
+* {
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+/* Vant 组件库适配 */
+:root {
+  --van-nav-bar-icon-color: #333;
 }
