@@ -126,9 +126,12 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { showSuccessToast, showToast } from 'vant'
+import { showFailToast, showSuccessToast, showToast } from 'vant'
+import { getLocationTree } from '@/api/locations'
+import { createItem } from '@/api/items'
+import { uploadImage } from '@/api/upload'
 import AppTabbar from './AppTabbar.vue'
 
 const router = useRouter()
@@ -153,46 +156,38 @@ const form = reactive({
 const categoryOptions = ['专业书籍', '电子数码', '宿舍日用', '运动户外', '其他闲置']
 const conditionOptions = ['全新', '9成新', '8成新', '有瑕疵']
 
-const locationOptions = [
-  {
-    text: '九龙湖校区',
-    value: 'JLH',
-    children: [
-      {
-        text: '梅园',
-        value: 'MY',
-        children: [
-          { text: '梅园1栋', value: 'JLH-MY-01' },
-          { text: '梅园2栋', value: 'JLH-MY-02' },
-        ],
-      },
-      {
-        text: '桃园',
-        value: 'TY',
-        children: [
-          { text: '桃园1栋', value: 'JLH-TY-01' },
-        ],
-      },
-    ],
-  },
-  {
-    text: '四牌楼校区',
-    value: 'SPL',
-    children: [
-      {
-        text: '成贤院',
-        value: 'CXY',
-        children: [{ text: '成贤1舍', value: 'SPL-CX-01' }],
-      },
-    ],
-  },
-]
+const locationOptions = ref([])
 
-const afterRead = (file) => {
+const fetchLocationOptions = async () => {
+  try {
+    locationOptions.value = await getLocationTree()
+  } catch (error) {
+    showFailToast(error.message || '地点加载失败')
+  }
+}
+
+const uploadOne = async (item) => {
+  item.status = 'uploading'
+  item.message = '上传中...'
+  try {
+    const result = await uploadImage(item.file)
+    item.url = result.url
+    item.status = 'done'
+    item.message = ''
+  } catch (error) {
+    item.status = 'failed'
+    item.message = '上传失败'
+    showFailToast(error.message || '图片上传失败')
+  }
+}
+
+const afterRead = async (file) => {
   if (Array.isArray(file)) {
-    file.forEach((item) => { item.status = 'done' })
+    for (const item of file) {
+      await uploadOne(item)
+    }
   } else {
-    file.status = 'done'
+    await uploadOne(file)
   }
 }
 
@@ -237,14 +232,31 @@ const handleSubmit = async () => {
     showToast({ message: '请选择面交地点', position: 'top' })
     return
   }
+  const imageUrls = fileList.value.map((item) => item.url).filter(Boolean)
+  if (imageUrls.length !== fileList.value.length) {
+    showToast({ message: '请等待图片上传完成', position: 'top' })
+    return
+  }
 
   isSubmitting.value = true
   try {
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    const created = await createItem({
+      title: form.title.trim(),
+      category: form.category,
+      condition: form.condition,
+      price: Number(form.price),
+      locationCode: form.locationCode,
+      description: form.description.trim(),
+      imageUrls
+    })
     showSuccessToast('发布成功！')
-    router.push('/home')
+    router.push(`/item/${created.id}`)
+  } catch (error) {
+    showFailToast(error.message || '发布失败，请稍后重试')
   } finally {
     isSubmitting.value = false
   }
 }
+
+onMounted(fetchLocationOptions)
 </script>

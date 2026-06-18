@@ -81,9 +81,12 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { showSuccessToast, showToast, showConfirmDialog } from 'vant'
+import { showFailToast, showSuccessToast, showToast, showConfirmDialog } from 'vant'
+import { listMyItems } from '@/api/items'
+import { getCurrentUser, updateCurrentUser } from '@/api/user'
+import { clearAuth } from '@/api/request'
 import AppTabbar from './AppTabbar.vue'
 
 const router = useRouter()
@@ -97,11 +100,12 @@ watch(() => route.query.tab, (tab) => {
 })
 
 const user = reactive({
-  nickname: '东大淘货王',
+  nickname: '',
   avatar: 'https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg',
-  location: '九龙湖校区 / 梅园 / 梅园1栋',
-  studentId: '220000001',
-  wechat: 'seu_market_01'
+  location: '',
+  locationCode: '',
+  studentId: '',
+  wechat: ''
 })
 
 const editForm = reactive({
@@ -116,22 +120,12 @@ const menuTabs = [
   { key: 'favorites', label: '我的收藏', icon: 'star-o' }
 ]
 
-const myItems = {
-  selling: [
-    { id: 8, title: '《高等数学》同济第七版 上册 有笔记', price: '15.00', status: '在售', image: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?q=80&w=200' },
-    { id: 5, title: '《计算机网络》自顶向下 第七版 几乎全新', price: '30.00', status: '在售', image: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=200' }
-  ],
-  bought: [
-    { id: 6, title: '小米手环8 戴了不到一个月', price: '120.00', status: '已完成', image: 'https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6?q=80&w=200' }
-  ],
-  reserved: [
-    { id: 1, title: '99新《数据库系统概论》王珊版，笔记很少', price: '25.00', status: '被预定', image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=200' }
-  ],
-  favorites: [
-    { id: 2, title: '毕业出个二手 AirPods Pro，左耳有点杂音，便宜出', price: '350.00', status: '在售', image: 'https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?q=80&w=200' },
-    { id: 4, title: '出电吉他，带音箱', price: '400.00', status: '在售', image: 'https://images.unsplash.com/photo-1514649923863-ceaf75b770ab?q=80&w=200' }
-  ]
-}
+const myItems = reactive({
+  selling: [],
+  bought: [],
+  reserved: [],
+  favorites: []
+})
 
 const tabKeys = Object.keys(myItems)
 const listTitle = computed(() => menuTabs.find(t => t.key === activeListTab.value)?.label || '我的商品')
@@ -142,7 +136,12 @@ const emptyIcon = computed(() => {
   return map[activeListTab.value] || 'goods-o'
 })
 const emptyText = computed(() => {
-  const map = { selling: '暂无在售商品', bought: '暂无购买记录', reserved: '暂无预定记录', favorites: '收藏夹是空的' }
+  const map = {
+    selling: '暂无在售商品',
+    bought: '购买记录由后端B接入',
+    reserved: '预定记录由后端B接入',
+    favorites: '收藏夹由后端B接入'
+  }
   return map[activeListTab.value] || '暂无数据'
 })
 
@@ -160,17 +159,60 @@ const goToDetail = (id) => router.push(`/item/${id}`)
 
 const showDeveloping = () => showToast('功能开发中')
 
-const saveProfile = () => {
-  user.nickname = editForm.nickname
-  user.wechat = editForm.wechat
-  showEdit.value = false
-  showSuccessToast('资料已更新')
+const loadProfile = async () => {
+  try {
+    const profile = await getCurrentUser()
+    user.nickname = profile.nickname || profile.studentId || '未设置昵称'
+    user.avatar = profile.avatarUrl || 'https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg'
+    user.location = profile.locationText || '未设置常驻地点'
+    user.locationCode = profile.locationCode || ''
+    user.studentId = profile.studentId
+    user.wechat = profile.wechat || ''
+    editForm.nickname = user.nickname
+    editForm.wechat = user.wechat
+  } catch (error) {
+    showFailToast(error.message || '资料加载失败')
+  }
+}
+
+const loadMySellingItems = async () => {
+  try {
+    myItems.selling = await listMyItems()
+  } catch (error) {
+    showFailToast(error.message || '我发布的商品加载失败')
+  }
+}
+
+const saveProfile = async () => {
+  if (!user.locationCode) {
+    showToast({ message: '请先在新用户引导页完善宿舍信息', position: 'top' })
+    return
+  }
+  try {
+    const profile = await updateCurrentUser({
+      nickname: editForm.nickname.trim(),
+      wechat: editForm.wechat.trim(),
+      locationCode: user.locationCode
+    })
+    user.nickname = profile.nickname || profile.studentId
+    user.wechat = profile.wechat || ''
+    showEdit.value = false
+    showSuccessToast('资料已更新')
+  } catch (error) {
+    showFailToast(error.message || '保存失败')
+  }
 }
 
 const handleLogout = async () => {
   try {
     await showConfirmDialog({ title: '确认退出', message: '退出后需重新验证登录' })
+    clearAuth()
     router.push('/login')
   } catch {}
 }
+
+onMounted(() => {
+  loadProfile()
+  loadMySellingItems()
+})
 </script>

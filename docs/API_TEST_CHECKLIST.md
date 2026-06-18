@@ -31,7 +31,7 @@ fetch('/api/users/me', { headers: { 'X-Dev-User-Id': '1' } }).then(r => r.json()
 
 ---
 
-## 模块 1：登录 Auth（待做）
+## 模块 1：登录 Auth（后端 A 已完成）
 
 | # | 方法 | 路径 | Body 示例 | 通过 |
 |---|------|------|-----------|------|
@@ -40,27 +40,29 @@ fetch('/api/users/me', { headers: { 'X-Dev-User-Id': '1' } }).then(r => r.json()
 
 ---
 
-## 模块 2：资料 + 宿舍树（待做）
+## 模块 2：资料 + 宿舍树（后端 A 已完成）
 
-| # | 方法 | 路径 | 通过 |
-|---|------|------|------|
-| 2.1 | GET | `/api/locations/tree` | [ ] |
-| 2.2 | PUT | `/api/users/me` | [ ] |
-
----
-
-## 模块 3：商品（待做）
-
-| # | 方法 | 路径 | 通过 |
-|---|------|------|------|
-| 3.1 | GET | `/api/items` | [ ] |
-| 3.2 | GET | `/api/items/{id}` | [ ] |
-| 3.3 | POST | `/api/items` | [ ] |
-| 3.4 | POST | `/api/upload/image` | [ ] |
+| # | 方法 | 路径 | Body / Header 示例 | 通过 |
+|---|------|------|--------------------|------|
+| 2.1 | GET | `/api/locations/tree` | `X-Dev-User-Id: 1` | [ ] |
+| 2.2 | PUT | `/api/users/me` | `{ "nickname": "后端A", "wechat": "backend_a", "locationCode": "JLH-MY-02" }` | [ ] |
 
 ---
 
-## 模块 4：预定（待做）
+## 模块 3：商品与上传（后端 A 已完成）
+
+| # | 方法 | 路径 | Body / 参数示例 | 通过 |
+|---|------|------|------------------|------|
+| 3.1 | GET | `/api/items?category=专业书籍&keyword=数据库` | `X-Dev-User-Id: 1` | [ ] |
+| 3.2 | GET | `/api/items/{id}` | `X-Dev-User-Id: 1` | [ ] |
+| 3.3 | POST | `/api/items` | `title, category, condition, price, locationCode, description, imageUrls` | [ ] |
+| 3.4 | PUT | `/api/items/{id}` | 仅发布者可修改 | [ ] |
+| 3.5 | DELETE | `/api/items/{id}` | 仅发布者可下架/软删除 | [ ] |
+| 3.6 | POST | `/api/upload/image` | multipart 字段 `file` | [ ] |
+
+---
+
+## 模块 4：预定（后端 B 待接入）
 
 | # | 方法 | 路径 | 通过 |
 |---|------|------|------|
@@ -68,7 +70,7 @@ fetch('/api/users/me', { headers: { 'X-Dev-User-Id': '1' } }).then(r => r.json()
 
 ---
 
-## 模块 5：消息（待做）
+## 模块 5：消息（后端 B 待接入）
 
 | # | 方法 | 路径 | 通过 |
 |---|------|------|------|
@@ -80,7 +82,7 @@ fetch('/api/users/me', { headers: { 'X-Dev-User-Id': '1' } }).then(r => r.json()
 
 ---
 
-## 模块 6：通知 + 收藏（待做）
+## 模块 6：通知 + 收藏（后端 B 待接入）
 
 | # | 方法 | 路径 | 通过 |
 |---|------|------|------|

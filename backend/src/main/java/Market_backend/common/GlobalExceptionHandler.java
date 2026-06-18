@@ -6,6 +6,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -28,6 +29,12 @@ public class GlobalExceptionHandler {
             message = bindEx.getBindingResult().getFieldError().getDefaultMessage();
         }
         return Result.fail(400, message);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    @ResponseStatus(HttpStatus.OK)
+    public Result<Void> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex) {
+        return Result.fail(400, "图片不能超过 5MB");
     }
 
     @ExceptionHandler(Exception.class)

@@ -8,6 +8,7 @@ public class UserProfileVO {
     private String nickname;
     private String avatarUrl;
     private String wechat;
+    private String locationCode;
     private String locationText;
     private Boolean isProfileComplete;
 
@@ -57,6 +58,14 @@ public class UserProfileVO {
 
     public void setWechat(String wechat) {
         this.wechat = wechat;
+    }
+
+    public String getLocationCode() {
+        return locationCode;
+    }
+
+    public void setLocationCode(String locationCode) {
+        this.locationCode = locationCode;
     }
 
     public String getLocationText() {

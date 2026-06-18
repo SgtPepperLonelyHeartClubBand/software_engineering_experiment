@@ -112,18 +112,17 @@
     <!-- 6. 图片预览 -->
     <van-image-preview v-model:show="showImagePreview" :images="itemImages" :closeable="true" :show-indicator="true" />  
 
-    <!-- 7. 预定确认弹窗 -->
-    <van-action-sheet v-model:show="showConfirm" title="确认预定此商品？">
+    <!-- 7. 后端B待接入功能提示 -->
+    <van-action-sheet v-model:show="showConfirm" title="预定功能待接入">
       <div class="p-6 text-center">
         <p class="text-gray-600 mb-6 leading-relaxed">
-          点击确认后，该商品将被标记为<span class="text-[#005A3C] font-bold">【被预定】</span>状态。<br>
-          为防止恶意锁单，请尽快与卖家私信协商线下交收细节！
+          该操作需要订单状态与并发锁定接口，属于后端B负责的范围。
         </p>
         <button
           @click="confirmLock"
           class="w-full py-3.5 bg-[#005A3C] text-white font-bold rounded-xl active:scale-[0.98] transition-transform shadow-lg shadow-[#005A3C]/30"
         >
-          确认锁定库存
+          知道了
         </button>
       </div>
     </van-action-sheet>
@@ -133,8 +132,8 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { showSuccessToast, showToast } from 'vant'
-import { getItemById, allItems } from '../stores/items'
+import { showFailToast, showToast } from 'vant'
+import { getItemDetail, listItems } from '@/api/items'
 
 const router = useRouter()
 const route = useRoute()
@@ -147,14 +146,26 @@ const wantCount = ref(0)
 
 const itemId = computed(() => Number(route.params.id))
 const itemData = ref({})
+const recommendList = ref([])
 
-function loadItem(id) {
+async function loadItem(id) {
   loading.value = true
-  const found = getItemById(id)
-  itemData.value = { ...found }
-  viewCount.value = Math.floor(Math.random() * 200) + 50
-  wantCount.value = found.wantCount || Math.floor(Math.random() * 20) + 3
-  setTimeout(() => { loading.value = false }, 300)
+  try {
+    const found = await getItemDetail(id)
+    itemData.value = found
+    viewCount.value = found.viewCount || 0
+    wantCount.value = found.wantCount || 0
+    const items = await listItems({ category: found.category })
+    recommendList.value = items
+      .filter(item => item.id !== found.id)
+      .slice(0, 2)
+  } catch (error) {
+    itemData.value = {}
+    recommendList.value = []
+    showFailToast(error.message || '商品详情加载失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 watch(itemId, (id) => { loadItem(id) }, { immediate: true })
@@ -164,15 +175,11 @@ const itemImages = computed(() => {
   return images && images.length ? images : ['https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg']
 })
 
-const recommendList = computed(() =>
-  allItems
-    .filter(item => item.id !== itemData.value.id)
-    .slice(0, 2)
-)
-
 const goBack = () => router.back()
 const goToDetail = (id) => router.push(`/item/${id}`)
-const goToChat = () => router.push(`/chat/${itemData.value.id}`)
+const goToChat = () => {
+  showToast({ message: '私信留言功能由后端B接入', position: 'top' })
+}
 
 const handleShare = async () => {
   const d = itemData.value
@@ -191,13 +198,11 @@ const handleShare = async () => {
 }
 
 const toggleFav = () => {
-  isFav.value = !isFav.value
-  showToast(isFav.value ? '已收藏' : '已取消收藏')
+  showToast({ message: '收藏功能由后端B接入', position: 'top' })
 }
 
 const confirmLock = () => {
   showConfirm.value = false
-  showSuccessToast('预定成功，快去私信卖家吧！')
-  setTimeout(goToChat, 1500)
+  showToast({ message: '预定锁单功能由后端B接入', position: 'top' })
 }
 </script>

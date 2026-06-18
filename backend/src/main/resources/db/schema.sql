@@ -21,3 +21,31 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at DATETIME NULL,
     CONSTRAINT fk_users_location FOREIGN KEY (location_id) REFERENCES location(id)
 );
+
+CREATE TABLE IF NOT EXISTS items (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    seller_id BIGINT NOT NULL,
+    location_id BIGINT NOT NULL,
+    title VARCHAR(40) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    item_condition VARCHAR(32) NOT NULL,
+    category VARCHAR(32) NOT NULL,
+    description VARCHAR(500) NULL,
+    cover_image_url VARCHAR(512) NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT '在售',
+    want_count INT NOT NULL DEFAULT 0,
+    view_count INT NOT NULL DEFAULT 0,
+    is_deleted TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NULL,
+    updated_at DATETIME NULL,
+    CONSTRAINT fk_items_seller FOREIGN KEY (seller_id) REFERENCES users(id),
+    CONSTRAINT fk_items_location FOREIGN KEY (location_id) REFERENCES location(id)
+);
+
+CREATE TABLE IF NOT EXISTS item_images (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    item_id BIGINT NOT NULL,
+    url VARCHAR(512) NOT NULL,
+    sort_order INT NOT NULL,
+    CONSTRAINT fk_item_images_item FOREIGN KEY (item_id) REFERENCES items(id)
+);

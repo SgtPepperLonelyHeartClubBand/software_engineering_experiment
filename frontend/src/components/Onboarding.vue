@@ -88,9 +88,11 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { onMounted, ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast, showSuccessToast } from 'vant'
+import { showFailToast, showToast, showSuccessToast } from 'vant'
+import { getLocationTree } from '@/api/locations'
+import { updateCurrentUser } from '@/api/user'
 
 const router = useRouter()
 
@@ -108,73 +110,15 @@ const isSubmitting = ref(false)
 const showCascader = ref(false)
 const cascaderValue = ref('')
 
-// 模拟东大真实的结构化选项树
-const locationOptions = [
-  {
-    text: '九龙湖校区',
-    value: 'JLH',
-    children: [
-      {
-        text: '梅园',
-        value: 'MY',
-        children: [
-          { text: '梅园1栋', value: 'JLH-MY-01' },
-          { text: '梅园2栋', value: 'JLH-MY-02' },
-          { text: '梅园3栋', value: 'JLH-MY-03' },
-        ],
-      },
-      {
-        text: '桃园',
-        value: 'TY',
-        children: [
-          { text: '桃园1栋', value: 'JLH-TY-01' },
-          { text: '桃园2栋', value: 'JLH-TY-02' },
-        ],
-      },
-      {
-        text: '橘园',
-        value: 'JY',
-        children: [
-          { text: '橘园1栋', value: 'JLH-JY-01' },
-        ]
-      }
-    ],
-  },
-  {
-    text: '四牌楼校区',
-    value: 'SPL',
-    children: [
-      {
-        text: '成贤院',
-        value: 'CXY',
-        children: [
-          { text: '成贤1舍', value: 'SPL-CX-01' },
-          { text: '成贤2舍', value: 'SPL-CX-02' },
-        ],
-      },
-      {
-        text: '沙塘园',
-        value: 'STY',
-        children: [
-          { text: '沙塘园宿舍', value: 'SPL-STY-01' },
-        ],
-      }
-    ],
-  },
-  {
-    text: '丁家桥校区',
-    value: 'DJQ',
-    children: [
-      {
-        text: '求恩坊',
-        value: 'QEF',
-        children: [
-          { text: '求恩1舍', value: 'DJQ-QE-01' }
-        ]
-      }
-    ]
+const locationOptions = ref([])
+
+const fetchLocationOptions = async () => {
+  try {
+    locationOptions.value = await getLocationTree()
+  } catch (error) {
+    showFailToast(error.message || '宿舍区加载失败')
   }
-]
+}
 
 // 选择完毕后的回调
 const onCascaderFinish = ({ selectedOptions }) => {
@@ -195,9 +139,11 @@ const handleSubmit = async () => {
   isSubmitting.value = true
 
   try {
-    // 模拟 API 请求保存用户信息
-    // await axios.post('/api/user/profile', formData)
-    await new Promise(resolve => setTimeout(resolve, 800))
+    await updateCurrentUser({
+      nickname: formData.nickname.trim(),
+      wechat: formData.wechat.trim(),
+      locationCode: formData.locationCode
+    })
     
     showSuccessToast('信息设置成功！')
     
@@ -209,4 +155,6 @@ const handleSubmit = async () => {
     isSubmitting.value = false
   }
 }
+
+onMounted(fetchLocationOptions)
 </script>

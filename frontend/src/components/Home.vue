@@ -49,7 +49,7 @@
       </div>
 
       <!-- 空状态 -->
-      <div v-else-if="!filteredList.length" class="pt-20">
+      <div v-else-if="!itemList.length" class="pt-20">
         <van-empty
           :image="searchKeyword || activeCategory !== 0 ? 'search' : 'goods'"
           :description="emptyText"
@@ -73,7 +73,7 @@
       <div v-else class="p-2">
         <div class="columns-2 gap-2">
           <div
-            v-for="item in filteredList"
+            v-for="item in itemList"
             :key="item.id"
             @click="goToDetail(item.id)"
             class="break-inside-avoid mb-2 bg-white rounded-xl overflow-hidden shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
@@ -107,7 +107,7 @@
         </div>
 
         <div class="text-center text-gray-400 text-xs py-4">
-          — 共 {{ filteredList.length }} 件商品 —
+          — 共 {{ itemList.length }} 件商品 —
         </div>
       </div>
     </van-pull-refresh>
@@ -119,8 +119,8 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast } from 'vant'
-import { allItems } from '../stores/items'
+import { showFailToast, showToast } from 'vant'
+import { listItems } from '@/api/items'
 import AppTabbar from './AppTabbar.vue'
 
 const router = useRouter()
@@ -128,27 +128,9 @@ const searchKeyword = ref('')
 const activeCategory = ref(0)
 const refreshing = ref(false)
 const loading = ref(true)
+const itemList = ref([])
 
 const categoryMap = ['全部', '专业书籍', '电子数码', '宿舍日用']
-
-const filteredList = computed(() => {
-  let list = allItems
-
-  const cat = categoryMap[activeCategory.value]
-  if (cat && cat !== '全部') {
-    list = list.filter(item => item.category === cat)
-  }
-
-  const kw = searchKeyword.value.trim().toLowerCase()
-  if (kw) {
-    list = list.filter(item =>
-      item.title.toLowerCase().includes(kw) ||
-      item.sellerName.toLowerCase().includes(kw)
-    )
-  }
-
-  return list
-})
 
 const emptyText = computed(() => {
   if (searchKeyword.value.trim()) {
@@ -162,18 +144,37 @@ const emptyText = computed(() => {
 
 const goToDetail = (id) => router.push(`/item/${id}`)
 
-const handleSearch = () => {
-  if (searchKeyword.value.trim() && filteredList.value.length === 0) {
+const fetchItems = async ({ showLoading = true } = {}) => {
+  if (showLoading) loading.value = true
+  try {
+    const category = categoryMap[activeCategory.value]
+    itemList.value = await listItems({
+      category: category === '全部' ? undefined : category,
+      keyword: searchKeyword.value
+    })
+  } catch (error) {
+    showFailToast(error.message || '商品列表加载失败')
+    itemList.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleSearch = async () => {
+  await fetchItems()
+  if (searchKeyword.value.trim() && itemList.value.length === 0) {
     showToast({ message: '未找到相关商品', position: 'top' })
   }
 }
 
 const handleSearchClear = () => {
   searchKeyword.value = ''
+  fetchItems()
 }
 
-const handleCategoryChange = () => {
-  if (filteredList.value.length === 0) {
+const handleCategoryChange = async () => {
+  await fetchItems()
+  if (itemList.value.length === 0) {
     showToast({ message: emptyText.value, position: 'top' })
   }
 }
@@ -181,16 +182,17 @@ const handleCategoryChange = () => {
 const resetFilters = () => {
   searchKeyword.value = ''
   activeCategory.value = 0
+  fetchItems()
 }
 
 const onRefresh = async () => {
-  await new Promise(resolve => setTimeout(resolve, 800))
+  await fetchItems({ showLoading: false })
   refreshing.value = false
   showToast({ message: '已更新商品列表', position: 'top' })
 }
 
 onMounted(() => {
-  setTimeout(() => { loading.value = false }, 600)
+  fetchItems()
 })
 </script>
 
