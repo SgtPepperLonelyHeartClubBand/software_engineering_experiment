@@ -5,6 +5,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -17,9 +18,14 @@ import java.util.Collections;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final boolean devAuthEnabled;
 
-    public JwtAuthFilter(JwtUtil jwtUtil) {
+    public JwtAuthFilter(
+            JwtUtil jwtUtil,
+            @Value("${app.security.dev-auth-enabled:true}") boolean devAuthEnabled
+    ) {
         this.jwtUtil = jwtUtil;
+        this.devAuthEnabled = devAuthEnabled;
     }
 
     @Override
@@ -37,7 +43,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     userId = jwtUtil.getUserIdFromToken(token);
                 }
             }
-            if (userId == null) {
+            if (userId == null && devAuthEnabled) {
                 userId = parseDevUserId(request.getHeader("X-Dev-User-Id"));
             }
             if (userId != null) {

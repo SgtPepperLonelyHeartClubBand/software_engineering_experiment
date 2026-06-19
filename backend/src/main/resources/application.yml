@@ -35,6 +35,8 @@ auth:
   send-interval-seconds: 60
 
 app:
+  security:
+    dev-auth-enabled: true
   upload:
     dir: uploads
     max-size-bytes: 5242880
