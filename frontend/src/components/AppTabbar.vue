@@ -8,8 +8,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { formatBadge, totalUnread } from '../stores/messages'
+import { computed, onMounted } from 'vue'
+import { formatBadge, refreshUnreadSummary, totalUnread } from '../stores/messages'
 
 const messageBadge = computed(() => formatBadge(totalUnread.value))
+
+onMounted(() => {
+  refreshUnreadSummary().catch(() => {})
+})
 </script>

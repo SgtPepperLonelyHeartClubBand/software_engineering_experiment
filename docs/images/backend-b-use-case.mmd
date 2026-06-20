@@ -1,0 +1,15 @@
+flowchart LR
+    Buyer[买家] --> Reserve[预定商品]
+    Buyer --> Cancel[取消预定]
+    Buyer --> Favorite[收藏/取消收藏]
+    Buyer --> Chat[私信卖家]
+    Buyer --> ReadNotice[查看系统通知]
+
+    Seller[卖家] --> Cancel
+    Seller --> Complete[确认交易完成]
+    Seller --> Chat
+    Seller --> ReadNotice
+
+    Reserve --> Lock[锁定商品库存]
+    Reserve --> NotifySeller[通知卖家]
+    Complete --> NotifyBuyer[通知买家]

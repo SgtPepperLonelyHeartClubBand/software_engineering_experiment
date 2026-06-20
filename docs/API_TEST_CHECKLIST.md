@@ -105,13 +105,34 @@ X-Dev-User-Id: 1
 | 6.3 | POST | `/api/upload/image` | 非允许扩展名 | 返回业务错误 `code=400` | [ ] |
 | 6.4 | GET | `/uploads/{filename}` | 无认证 | 可直接访问静态资源 | [ ] |
 
-## 7. 后端 B 占位接口
+## 7. 后端 B 交易闭环接口
 
-以下接口不属于后端 A，本阶段不验收：
+后端 B 已补齐交易状态、收藏、私信和通知能力，仍沿用统一响应格式与登录态。
 
-| 功能 | 说明 |
-|---|---|
-| 商品预定/取消预定 | 后端 B 负责订单状态与并发锁定 |
-| 收藏/取消收藏 | 后端 B 负责 |
-| 私信会话/消息 | 后端 B 负责 |
-| 系统通知 | 后端 B 负责 |
+| # | 方法 | 路径 | 请求 | 验证点 | 通过 |
+|---|---|---|---|---|---|
+| 7.1 | POST | `/api/items/{id}/reserve` | 买家登录态 | 商品从 `在售` 变为 `被预定`，返回 `orderId`、`conversationId`，卖家收到通知 | [ ] |
+| 7.2 | POST | `/api/items/{id}/reserve` | 卖家本人 | 返回 `code=400`，不能预定自己发布的商品 | [ ] |
+| 7.3 | POST | `/api/items/{id}/reserve` | 第二个买家 | 已被预定商品返回 `code=400`，避免超卖 | [ ] |
+| 7.4 | POST | `/api/orders/{id}/cancel` | 买家或卖家 | 订单变 `CANCELLED`，商品恢复 `在售` | [ ] |
+| 7.5 | POST | `/api/orders/{id}/complete` | 卖家 | 订单变 `COMPLETED`，商品变 `已完成`，买家收到通知 | [ ] |
+| 7.6 | POST | `/api/orders/{id}/complete` | 买家 | 返回 `code=403`，买家不能确认完成 | [ ] |
+| 7.7 | GET | `/api/orders/reserved` | 买家登录态 | 返回“我的预定”商品列表 | [ ] |
+| 7.8 | GET | `/api/orders/bought` | 买家登录态 | 返回“我买到的”商品列表 | [ ] |
+
+## 8. 后端 B 收藏、私信与通知
+
+| # | 方法 | 路径 | 请求 | 验证点 | 通过 |
+|---|---|---|---|---|---|
+| 8.1 | POST | `/api/items/{id}/favorite` | 买家登录态 | 收藏成功，商品详情 `favorited=true` | [ ] |
+| 8.2 | DELETE | `/api/items/{id}/favorite` | 买家登录态 | 取消收藏成功 | [ ] |
+| 8.3 | GET | `/api/favorites` | 买家登录态 | 返回“我的收藏”商品列表 | [ ] |
+| 8.4 | POST | `/api/conversations` | `{ "itemId": 1 }` | 创建或复用买家与卖家的商品会话 | [ ] |
+| 8.5 | GET | `/api/conversations` | 登录态 | 私信列表按未读优先展示，包含关联商品信息 | [ ] |
+| 8.6 | POST | `/api/conversations/{id}/messages` | `{ "content": "还在吗" }` | 发送消息，接收方未读数加 1 | [ ] |
+| 8.7 | POST | `/api/conversations/{id}/read` | 登录态 | 当前用户该会话未读数清零 | [ ] |
+| 8.8 | POST | `/api/messages/{id}/recall` | 发送者 | 2 分钟内可撤回，非发送者返回 `code=403` | [ ] |
+| 8.9 | GET | `/api/notifications` | 登录态 | 返回系统通知列表 | [ ] |
+| 8.10 | POST | `/api/notifications/{id}/read` | 登录态 | 单条通知已读 | [ ] |
+| 8.11 | POST | `/api/notifications/read-all` | 登录态 | 当前用户通知全部已读 | [ ] |
+| 8.12 | GET | `/api/messages/unread-summary` | 登录态 | 返回私信、通知和总未读数 | [ ] |

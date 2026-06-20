@@ -85,6 +85,8 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showFailToast, showSuccessToast, showToast, showConfirmDialog } from 'vant'
 import { listMyItems } from '@/api/items'
+import { listFavoriteItems } from '@/api/favorites'
+import { listBoughtItems, listReservedItems } from '@/api/trade'
 import { getCurrentUser, updateCurrentUser } from '@/api/user'
 import { clearAuth } from '@/api/request'
 import AppTabbar from './AppTabbar.vue'
@@ -138,9 +140,9 @@ const emptyIcon = computed(() => {
 const emptyText = computed(() => {
   const map = {
     selling: '暂无在售商品',
-    bought: '购买记录由后端B接入',
-    reserved: '预定记录由后端B接入',
-    favorites: '收藏夹由后端B接入'
+    bought: '暂无已完成交易',
+    reserved: '暂无预定商品',
+    favorites: '暂无收藏商品'
   }
   return map[activeListTab.value] || '暂无数据'
 })
@@ -183,6 +185,21 @@ const loadMySellingItems = async () => {
   }
 }
 
+const loadBackendBItems = async () => {
+  try {
+    const [bought, reserved, favorites] = await Promise.all([
+      listBoughtItems(),
+      listReservedItems(),
+      listFavoriteItems()
+    ])
+    myItems.bought = bought
+    myItems.reserved = reserved
+    myItems.favorites = favorites
+  } catch (error) {
+    showFailToast(error.message || '交易记录加载失败')
+  }
+}
+
 const saveProfile = async () => {
   if (!user.locationCode) {
     showToast({ message: '请先在新用户引导页完善宿舍信息', position: 'top' })
@@ -214,5 +231,6 @@ const handleLogout = async () => {
 onMounted(() => {
   loadProfile()
   loadMySellingItems()
+  loadBackendBItems()
 })
 </script>

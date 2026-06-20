@@ -1,0 +1,457 @@
+
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <base href="file:///home/dreamtct/software_engineering_experiment/software_engineering_experiment/docs/">
+  <title>后端开发 B 最终报告</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm;
+    }
+    body {
+      margin: 0;
+      color: #1f2937;
+      font-family: "Noto Sans CJK SC", "Microsoft YaHei", Arial, sans-serif;
+      font-size: 12.5px;
+      line-height: 1.62;
+    }
+    h1 {
+      margin: 0 0 18px;
+      color: #111827;
+      font-size: 24px;
+      line-height: 1.3;
+      border-bottom: 2px solid #dbe4f0;
+      padding-bottom: 10px;
+    }
+    h2 {
+      margin: 26px 0 10px;
+      color: #12305a;
+      font-size: 18px;
+      border-left: 4px solid #2563eb;
+      padding-left: 10px;
+      break-after: avoid;
+    }
+    h3 {
+      margin: 18px 0 8px;
+      color: #1f3a5f;
+      font-size: 14.5px;
+      break-after: avoid;
+    }
+    p, li {
+      margin-top: 4px;
+      margin-bottom: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 14px;
+      font-size: 11.5px;
+    }
+    th, td {
+      border: 1px solid #d6dce8;
+      padding: 6px 8px;
+      vertical-align: top;
+    }
+    th {
+      background: #eef4ff;
+      color: #17345f;
+    }
+    code {
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: #f3f6fb;
+      color: #0f3b6d;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 11.5px;
+    }
+    pre {
+      padding: 10px 12px;
+      background: #0f172a;
+      color: #e5edf7;
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 10.5px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    pre code {
+      padding: 0;
+      background: transparent;
+      color: inherit;
+    }
+    img {
+      display: block;
+      max-width: 100%;
+      margin: 10px auto 16px;
+      border: 1px solid #d8e0ec;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(17, 24, 39, 0.08);
+    }
+    a {
+      color: #1d4ed8;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+<h1>团队最终报告补充章节：后端开发 B 负责部分</h1>
+<blockquote>
+<p>本章节用于并入团队最终报告，覆盖后端开发 B 在分工中负责的《需求分析》《系统设计》和《程序开发》内容。后端 B 在后端 A 已完成的认证、用户、商品 CRUD、上传和地点树基础上，补齐交易闭环、收藏、私信和系统通知能力。</p>
+</blockquote>
+<h2>一、需求分析：核心交易流与消息通知</h2>
+<h3>1. 后端 B 职责边界</h3>
+<p>根据团队分工，后端 B 负责核心业务开发，具体包括：</p>
+<table>
+<thead>
+<tr>
+<th>功能模块</th>
+<th>需求说明</th>
+<th>依赖基础</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>商品预定</td>
+<td>买家点击“我想要”后锁定商品，避免其他买家继续预定</td>
+<td>商品状态、当前用户识别</td>
+</tr>
+<tr>
+<td>取消预定</td>
+<td>买家或卖家可以取消未完成预定，商品重新回到在售状态</td>
+<td>订单状态流转</td>
+</tr>
+<tr>
+<td>交易完成</td>
+<td>卖家确认线下面交完成，商品进入已完成状态</td>
+<td>订单、商品、买卖双方</td>
+</tr>
+<tr>
+<td>并发控制</td>
+<td>同一商品同时被多人预定时只能成功一个</td>
+<td>事务和行级锁</td>
+</tr>
+<tr>
+<td>收藏</td>
+<td>买家可以收藏或取消收藏商品，并在个人中心查看</td>
+<td>当前用户、商品 ID</td>
+</tr>
+<tr>
+<td>私信</td>
+<td>买家和卖家围绕商品建立会话，支持消息、引用、撤回和已读</td>
+<td>用户、商品、会话</td>
+</tr>
+<tr>
+<td>系统通知</td>
+<td>预定、取消、完成等关键事件向对应用户发通知</td>
+<td>业务事件和用户身份</td>
+</tr>
+</tbody>
+</table>
+<h3>2. 功能需求</h3>
+<ul>
+<li>买家可以预定在售商品；预定成功后商品状态变为“被预定”，并自动创建与卖家的私信会话。</li>
+<li>卖家不能预定自己发布的商品；已下架、已被预定、已完成商品不能再次预定。</li>
+<li>买家或卖家可以取消未完成预定；取消后商品恢复为“在售”。</li>
+<li>卖家可以确认交易完成；完成后商品状态变为“已完成”，买家可在“我买到的”中查看。</li>
+<li>买家可以收藏或取消收藏商品，商品详情页展示当前收藏态，个人中心展示收藏列表。</li>
+<li>会话按关联商品组织，消息支持文本、引用回复、2 分钟内撤回、未读计数和已读清零。</li>
+<li>系统通知展示预定、取消、完成事件，支持单条已读、全部已读和全局未读汇总。</li>
+</ul>
+<h3>3. 非功能需求</h3>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>一致性</td>
+<td>商品预定必须在事务中完成，商品状态和订单状态不能出现不一致</td>
+</tr>
+<tr>
+<td>并发安全</td>
+<td>对商品行加悲观写锁，避免两个买家同时预定成功</td>
+</tr>
+<tr>
+<td>可维护性</td>
+<td>继续使用 Controller、Service、Repository、Entity、DTO 分层</td>
+</tr>
+<tr>
+<td>可测试性</td>
+<td>使用 H2 test profile 和 MockMvc 覆盖交易、消息、通知 API</td>
+</tr>
+<tr>
+<td>兼容性</td>
+<td>保持后端 A 的 <code>Result&lt;T&gt;</code> 格式和前端现有字段不变</td>
+</tr>
+</tbody>
+</table>
+<h3>4. 核心用例图</h3>
+<p><img src="images/backend-b-use-case.png" alt="核心用例图"></p>
+<h3>5. 交易场景图</h3>
+<p><img src="images/backend-b-reserve-sequence.png" alt="交易场景图"></p>
+<h2>二、系统设计：数据库、状态机与后端逻辑</h2>
+<h3>1. 数据库设计</h3>
+<p>后端 B 新增 5 张表，均通过 JPA 实体映射，<code>db/schema.sql</code> 中同步保留结构说明，便于报告和答辩展示。</p>
+<table>
+<thead>
+<tr>
+<th>表</th>
+<th>作用</th>
+<th>关键字段</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>trade_orders</code></td>
+<td>记录预定和交易状态</td>
+<td><code>item_id</code>、<code>buyer_id</code>、<code>seller_id</code>、<code>status</code></td>
+</tr>
+<tr>
+<td><code>favorites</code></td>
+<td>记录用户收藏</td>
+<td><code>user_id</code>、<code>item_id</code> 唯一约束</td>
+</tr>
+<tr>
+<td><code>conversations</code></td>
+<td>记录围绕商品的买卖双方会话</td>
+<td><code>item_id</code>、<code>buyer_id</code>、<code>seller_id</code>、未读数</td>
+</tr>
+<tr>
+<td><code>chat_messages</code></td>
+<td>记录私信消息</td>
+<td><code>conversation_id</code>、<code>sender_id</code>、<code>recipient_id</code>、<code>quote_message_id</code></td>
+</tr>
+<tr>
+<td><code>system_notifications</code></td>
+<td>记录系统通知</td>
+<td><code>user_id</code>、<code>type</code>、<code>item_id</code>、<code>conversation_id</code>、<code>is_read</code></td>
+</tr>
+</tbody>
+</table>
+<p>数据库关系如下：</p>
+<p><img src="images/backend-b-er.png" alt="数据库关系图"></p>
+<h3>2. 商品与订单状态机</h3>
+<p>商品状态继续使用中文，直接适配前端页面展示；订单状态使用英文常量，便于代码中判断。</p>
+<p><img src="images/backend-b-item-state.png" alt="商品状态机"></p>
+<p>订单状态流转：</p>
+<p><img src="images/backend-b-order-state.png" alt="订单状态机"></p>
+<h3>3. 并发锁定设计</h3>
+<p>商品预定是后端 B 的关键一致性场景。实现时在 <code>ItemRepository</code> 中新增悲观写锁查询：</p>
+<pre><code class="language-text">findByIdForUpdate(itemId)
+</code></pre>
+<p>预定流程在一个事务中完成：</p>
+<ol>
+<li>使用悲观写锁读取商品；</li>
+<li>校验商品未删除且状态为“在售”；</li>
+<li>校验当前用户不是卖家；</li>
+<li>更新商品状态为“被预定”；</li>
+<li>创建 <code>TradeOrder</code>；</li>
+<li>创建或复用 <code>Conversation</code>；</li>
+<li>创建卖家系统通知。</li>
+</ol>
+<p>由于第二个并发事务必须等待第一个事务提交，等它再次读取商品时状态已不再是“在售”，因此会返回业务错误，避免超卖。</p>
+<h3>4. 后端逻辑流程图</h3>
+<p><img src="images/backend-b-reserve-flow.png" alt="后端逻辑流程图"></p>
+<h2>三、程序开发：代码组织与接口实现</h2>
+<h3>1. 代码组织</h3>
+<p>后端 B 仍遵循后端 A 的分层结构：</p>
+<pre><code class="language-text">Market_backend
+├── controller
+│   ├── TradeController
+│   ├── FavoriteController
+│   ├── ConversationController
+│   └── NotificationController
+├── service
+│   ├── TradeService
+│   ├── FavoriteService
+│   ├── ConversationService
+│   └── NotificationService
+├── entity
+│   ├── TradeOrder
+│   ├── Favorite
+│   ├── Conversation
+│   ├── ChatMessage
+│   └── SystemNotification
+├── repository
+│   ├── TradeOrderRepository
+│   ├── FavoriteRepository
+│   ├── ConversationRepository
+│   ├── ChatMessageRepository
+│   └── SystemNotificationRepository
+└── dto
+    ├── OrderVO
+    ├── ConversationVO
+    ├── ChatMessageVO
+    ├── NotificationVO
+    └── UnreadSummaryVO
+</code></pre>
+<h3>2. 主要 API</h3>
+<table>
+<thead>
+<tr>
+<th>接口</th>
+<th>功能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST /api/items/{id}/reserve</code></td>
+<td>预定商品，返回订单和会话</td>
+</tr>
+<tr>
+<td><code>POST /api/orders/{id}/cancel</code></td>
+<td>取消预定</td>
+</tr>
+<tr>
+<td><code>POST /api/orders/{id}/complete</code></td>
+<td>卖家确认完成</td>
+</tr>
+<tr>
+<td><code>GET /api/orders/reserved</code></td>
+<td>当前买家的预定列表</td>
+</tr>
+<tr>
+<td><code>GET /api/orders/bought</code></td>
+<td>当前买家的已完成交易列表</td>
+</tr>
+<tr>
+<td><code>POST /api/items/{id}/favorite</code></td>
+<td>收藏商品</td>
+</tr>
+<tr>
+<td><code>DELETE /api/items/{id}/favorite</code></td>
+<td>取消收藏</td>
+</tr>
+<tr>
+<td><code>GET /api/favorites</code></td>
+<td>收藏列表</td>
+</tr>
+<tr>
+<td><code>POST /api/conversations</code></td>
+<td>创建或复用会话</td>
+</tr>
+<tr>
+<td><code>GET /api/conversations</code></td>
+<td>私信列表</td>
+</tr>
+<tr>
+<td><code>POST /api/conversations/{id}/messages</code></td>
+<td>发送消息</td>
+</tr>
+<tr>
+<td><code>POST /api/messages/{id}/recall</code></td>
+<td>撤回消息</td>
+</tr>
+<tr>
+<td><code>GET /api/notifications</code></td>
+<td>系统通知列表</td>
+</tr>
+<tr>
+<td><code>GET /api/messages/unread-summary</code></td>
+<td>全局未读汇总</td>
+</tr>
+</tbody>
+</table>
+<h3>3. 前后端对接</h3>
+<p>后端 B 实现后，前端原有占位逻辑已替换为真实接口：</p>
+<table>
+<thead>
+<tr>
+<th>页面</th>
+<th>对接内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Detail.vue</code></td>
+<td>收藏、预定、创建私信会话</td>
+</tr>
+<tr>
+<td><code>Messages.vue</code></td>
+<td>私信列表、通知列表、已读、删除会话</td>
+</tr>
+<tr>
+<td><code>Chat.vue</code></td>
+<td>消息列表、发送、引用、撤回</td>
+</tr>
+<tr>
+<td><code>Profile.vue</code></td>
+<td>我买到的、我的预定、我的收藏</td>
+</tr>
+<tr>
+<td><code>AppTabbar.vue</code></td>
+<td>全局未读数角标</td>
+</tr>
+</tbody>
+</table>
+<h2>四、测试与验收</h2>
+<h3>1. 自动化测试</h3>
+<p>新增 <code>BackendBApiTests</code>，使用 H2 test profile 和 MockMvc 验证核心业务：</p>
+<table>
+<thead>
+<tr>
+<th>测试内容</th>
+<th>验证点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>预定商品</td>
+<td>商品状态变为“被预定”，返回订单和会话</td>
+</tr>
+<tr>
+<td>重复预定</td>
+<td>第二个买家不能预定已锁定商品</td>
+</tr>
+<tr>
+<td>完成交易</td>
+<td>只有卖家可完成，完成后商品变“已完成”</td>
+</tr>
+<tr>
+<td>取消预定</td>
+<td>订单取消后商品恢复“在售”</td>
+</tr>
+<tr>
+<td>收藏</td>
+<td>收藏后详情页 <code>favorited=true</code>，收藏列表可见</td>
+</tr>
+<tr>
+<td>私信</td>
+<td>会话创建、消息发送、引用、未读、已读</td>
+</tr>
+<tr>
+<td>撤回</td>
+<td>非发送者不可撤回，发送者可在限制内撤回</td>
+</tr>
+<tr>
+<td>通知</td>
+<td>预定和完成生成通知，通知可标记已读</td>
+</tr>
+</tbody>
+</table>
+<h3>2. 验证命令</h3>
+<pre><code class="language-bash">cd backend
+./mvnw test
+</code></pre>
+<p>前端构建：</p>
+<pre><code class="language-bash">cd frontend
+npm ci
+npm run build
+</code></pre>
+<h3>3. 验收结论</h3>
+<p>后端 B 完成后，系统从“商品发布与浏览”扩展为完整的校园二手交易闭环：买家可以收藏、预定、私信卖家，卖家可以完成交易，系统可以通过通知和未读角标提醒双方处理交易进展。该部分与后端 A 的安全认证、商品基础能力以及前端买家端页面形成完整联动。</p>
+<h2>五、运行截图与证据</h2>
+<h3>1. 后端自动化测试通过截图</h3>
+<p><img src="images/backend-b-test-success.png" alt="./mvnw test BUILD SUCCESS"></p>
+<h3>2. 前后端联调截图</h3>
+<p>下图展示买家预定商品后，卖家消息页出现“商品被预定”系统通知，说明预定状态、会话与通知链路已经联通。</p>
+<p><img src="images/backend-b-frontend-notification.png" alt="商品预定后消息页通知"></p>
+
+</body>
+</html>

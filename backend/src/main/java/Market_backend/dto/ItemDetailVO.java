@@ -8,6 +8,9 @@ public class ItemDetailVO extends ItemListVO {
     private List<String> images;
     private Long sellerId;
     private Integer viewCount;
+    private Boolean favorited;
+    private Boolean reservedByMe;
+    private Long activeOrderId;
 
     public String getDescription() {
         return description;
@@ -39,5 +42,29 @@ public class ItemDetailVO extends ItemListVO {
 
     public void setViewCount(Integer viewCount) {
         this.viewCount = viewCount;
+    }
+
+    public Boolean getFavorited() {
+        return favorited;
+    }
+
+    public void setFavorited(Boolean favorited) {
+        this.favorited = favorited;
+    }
+
+    public Boolean getReservedByMe() {
+        return reservedByMe;
+    }
+
+    public void setReservedByMe(Boolean reservedByMe) {
+        this.reservedByMe = reservedByMe;
+    }
+
+    public Long getActiveOrderId() {
+        return activeOrderId;
+    }
+
+    public void setActiveOrderId(Long activeOrderId) {
+        this.activeOrderId = activeOrderId;
     }
 }

@@ -59,7 +59,7 @@
                 >
                   {{ chat.name }}
                 </span>
-                <span class="text-xs text-gray-400 shrink-0 ml-2">{{ chat.time }}</span>
+                <span class="text-xs text-gray-400 shrink-0 ml-2">{{ formatTime(chat.time) }}</span>
               </div>
               <div class="flex items-center gap-2">
                 <van-tag v-if="chat.itemTitle" color="#005A3C" plain class="!text-[10px] shrink-0">
@@ -122,7 +122,7 @@
                 <span class="font-bold text-sm" :class="notice.unread ? 'text-gray-900' : 'text-gray-800'">
                   {{ notice.title }}
                 </span>
-                <span class="text-xs text-gray-400">{{ notice.time }}</span>
+                <span class="text-xs text-gray-400">{{ formatTime(notice.time) }}</span>
               </div>
               <p class="text-sm text-gray-500 leading-relaxed">{{ notice.content }}</p>
             </div>
@@ -143,9 +143,9 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast } from 'vant'
+import { showFailToast, showToast } from 'vant'
 import AppTabbar from './AppTabbar.vue'
 import {
   chats,
@@ -156,6 +156,8 @@ import {
   markAllChatsAsRead,
   markNoticesAsRead,
   markNoticeAsRead,
+  refreshChats,
+  refreshNotices,
   totalChatUnread,
   totalNoticeUnread,
   totalUnread,
@@ -176,29 +178,70 @@ const sortedChats = computed(() =>
   })
 )
 
-const goToChat = (id) => {
-  markChatAsRead(id)
-  router.push(`/chat/${id}`)
-}
-
-const readNotice = (id) => {
-  markNoticeAsRead(id)
-}
-
-const handleMarkAllRead = () => {
-  markAllChatsAsRead()
-  markNoticesAsRead()
-  showToast({ message: '已全部标记为已读', position: 'top' })
-}
-
-const onTabChange = (index) => {
-  if (index === 1) {
-    markNoticesAsRead()
+const goToChat = async (id) => {
+  try {
+    await markChatAsRead(id)
+    router.push(`/chat/${id}`)
+  } catch (error) {
+    showFailToast(error.message || '会话读取失败')
   }
 }
 
-const handleDelete = (id) => {
-  deleteChat(id)
-  showToast('已删除会话')
+const readNotice = async (id) => {
+  try {
+    await markNoticeAsRead(id)
+  } catch (error) {
+    showFailToast(error.message || '通知读取失败')
+  }
 }
+
+const handleMarkAllRead = async () => {
+  try {
+    await markAllChatsAsRead()
+    await markNoticesAsRead()
+    showToast({ message: '已全部标记为已读', position: 'top' })
+  } catch (error) {
+    showFailToast(error.message || '全部已读失败')
+  }
+}
+
+const onTabChange = async (index) => {
+  if (index === 1) {
+    try {
+      await markNoticesAsRead()
+    } catch (error) {
+      showFailToast(error.message || '通知已读失败')
+    }
+  }
+}
+
+const handleDelete = async (id) => {
+  try {
+    await deleteChat(id)
+    showToast('已删除会话')
+  } catch (error) {
+    showFailToast(error.message || '删除会话失败')
+  }
+}
+
+const loadPageData = async () => {
+  try {
+    await Promise.all([refreshChats(), refreshNotices()])
+  } catch (error) {
+    showFailToast(error.message || '消息加载失败')
+  }
+}
+
+const formatTime = (value) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const now = new Date()
+  const sameDay = date.toDateString() === now.toDateString()
+  return sameDay
+    ? date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+}
+
+onMounted(loadPageData)
 </script>

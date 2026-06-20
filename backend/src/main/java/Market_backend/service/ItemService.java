@@ -7,9 +7,12 @@ import Market_backend.dto.ItemRequest;
 import Market_backend.entity.Item;
 import Market_backend.entity.ItemImage;
 import Market_backend.entity.Location;
+import Market_backend.entity.TradeOrder;
 import Market_backend.entity.User;
+import Market_backend.repository.FavoriteRepository;
 import Market_backend.repository.ItemRepository;
 import Market_backend.repository.LocationRepository;
+import Market_backend.repository.TradeOrderRepository;
 import Market_backend.repository.UserRepository;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -32,15 +35,21 @@ public class ItemService {
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
     private final LocationRepository locationRepository;
+    private final FavoriteRepository favoriteRepository;
+    private final TradeOrderRepository tradeOrderRepository;
 
     public ItemService(
             ItemRepository itemRepository,
             UserRepository userRepository,
-            LocationRepository locationRepository
+            LocationRepository locationRepository,
+            FavoriteRepository favoriteRepository,
+            TradeOrderRepository tradeOrderRepository
     ) {
         this.itemRepository = itemRepository;
         this.userRepository = userRepository;
         this.locationRepository = locationRepository;
+        this.favoriteRepository = favoriteRepository;
+        this.tradeOrderRepository = tradeOrderRepository;
     }
 
     @Transactional(readOnly = true)
@@ -62,10 +71,10 @@ public class ItemService {
     }
 
     @Transactional
-    public ItemDetailVO getItemDetail(Long id) {
+    public ItemDetailVO getItemDetail(Long id, Long currentUserId) {
         Item item = findVisibleItem(id);
         item.setViewCount(nullToZero(item.getViewCount()) + 1);
-        return toDetailVO(item);
+        return toDetailVO(item, currentUserId);
     }
 
     @Transactional
@@ -79,7 +88,7 @@ public class ItemService {
         Item item = new Item();
         item.setSeller(seller);
         applyRequest(item, request);
-        return toDetailVO(itemRepository.save(item));
+        return toDetailVO(itemRepository.save(item), userId);
     }
 
     @Transactional
@@ -87,7 +96,7 @@ public class ItemService {
         Item item = findVisibleItem(itemId);
         ensureOwner(item, userId);
         applyRequest(item, request);
-        return toDetailVO(item);
+        return toDetailVO(item, userId);
     }
 
     @Transactional
@@ -163,7 +172,7 @@ public class ItemService {
         }
     }
 
-    private ItemListVO toListVO(Item item) {
+    public ItemListVO toListVO(Item item) {
         ItemListVO vo = new ItemListVO();
         vo.setId(item.getId());
         vo.setTitle(item.getTitle());
@@ -180,7 +189,7 @@ public class ItemService {
         return vo;
     }
 
-    private ItemDetailVO toDetailVO(Item item) {
+    private ItemDetailVO toDetailVO(Item item, Long currentUserId) {
         ItemListVO base = toListVO(item);
         ItemDetailVO vo = new ItemDetailVO();
         vo.setId(base.getId());
@@ -202,7 +211,28 @@ public class ItemService {
                 .sorted(Comparator.comparing(ItemImage::getSortOrder))
                 .map(ItemImage::getUrl)
                 .toList());
+        fillInteractionState(vo, item, currentUserId);
         return vo;
+    }
+
+    private void fillInteractionState(ItemDetailVO vo, Item item, Long currentUserId) {
+        vo.setFavorited(false);
+        vo.setReservedByMe(false);
+        vo.setActiveOrderId(null);
+        if (currentUserId == null) {
+            return;
+        }
+
+        vo.setFavorited(favoriteRepository.existsByUserIdAndItemId(currentUserId, item.getId()));
+        tradeOrderRepository.findByItemIdAndStatus(item.getId(), TradeOrder.STATUS_RESERVED)
+                .ifPresent(order -> {
+                    boolean isBuyer = order.getBuyer().getId().equals(currentUserId);
+                    boolean isSeller = order.getSeller().getId().equals(currentUserId);
+                    vo.setReservedByMe(isBuyer);
+                    if (isBuyer || isSeller) {
+                        vo.setActiveOrderId(order.getId());
+                    }
+                });
     }
 
     private String buildSellerName(User seller) {

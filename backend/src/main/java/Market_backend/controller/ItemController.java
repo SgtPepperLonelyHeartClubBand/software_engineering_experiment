@@ -46,7 +46,7 @@ public class ItemController {
 
     @GetMapping("/{id}")
     public Result<ItemDetailVO> detail(@PathVariable Long id) {
-        return Result.ok(itemService.getItemDetail(id));
+        return Result.ok(itemService.getItemDetail(id, resolveUserId()));
     }
 
     @PostMapping

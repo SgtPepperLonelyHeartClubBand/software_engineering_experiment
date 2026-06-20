@@ -100,11 +100,12 @@
     <!-- 5. 底部固定操作栏 -->
     <van-action-bar>
       <van-action-bar-icon icon="chat-o" text="私信留言" @click="goToChat" />
-      <van-action-bar-icon icon="star-o" text="收藏" :color="isFav ? '#005A3C' : ''" @click="toggleFav" />
+      <van-action-bar-icon :icon="isFav ? 'star' : 'star-o'" text="收藏" :color="isFav ? '#005A3C' : ''" @click="toggleFav" />
       <van-action-bar-button
         type="danger"
         color="#005A3C"
-        text="我想要"
+        :text="reserveButtonText"
+        :disabled="!canReserve"
         @click="showConfirm = true"
       />
     </van-action-bar>
@@ -112,17 +113,17 @@
     <!-- 6. 图片预览 -->
     <van-image-preview v-model:show="showImagePreview" :images="itemImages" :closeable="true" :show-indicator="true" />  
 
-    <!-- 7. 后端B待接入功能提示 -->
-    <van-action-sheet v-model:show="showConfirm" title="预定功能待接入">
+    <!-- 7. 预定确认 -->
+    <van-action-sheet v-model:show="showConfirm" title="确认预定此商品？">
       <div class="p-6 text-center">
         <p class="text-gray-600 mb-6 leading-relaxed">
-          该操作需要订单状态与并发锁定接口，属于后端B负责的范围。
+          预定后商品会锁定为“被预定”，并自动进入与卖家的私信会话。
         </p>
         <button
           @click="confirmLock"
           class="w-full py-3.5 bg-[#005A3C] text-white font-bold rounded-xl active:scale-[0.98] transition-transform shadow-lg shadow-[#005A3C]/30"
         >
-          知道了
+          确认预定
         </button>
       </div>
     </van-action-sheet>
@@ -132,8 +133,11 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { showFailToast, showToast } from 'vant'
+import { showFailToast, showSuccessToast, showToast } from 'vant'
+import { favoriteItem, unfavoriteItem } from '@/api/favorites'
 import { getItemDetail, listItems } from '@/api/items'
+import { reserveItem } from '@/api/trade'
+import { ensureChatForItem } from '@/stores/messages'
 
 const router = useRouter()
 const route = useRoute()
@@ -153,6 +157,7 @@ async function loadItem(id) {
   try {
     const found = await getItemDetail(id)
     itemData.value = found
+    isFav.value = Boolean(found.favorited)
     viewCount.value = found.viewCount || 0
     wantCount.value = found.wantCount || 0
     const items = await listItems({ category: found.category })
@@ -175,10 +180,24 @@ const itemImages = computed(() => {
   return images && images.length ? images : ['https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg']
 })
 
+const canReserve = computed(() => itemData.value.status === '在售')
+const reserveButtonText = computed(() => {
+  if (itemData.value.reservedByMe) return '已预定'
+  if (itemData.value.status === '被预定') return '已被预定'
+  if (itemData.value.status === '已完成') return '已完成'
+  return '我想要'
+})
+
 const goBack = () => router.back()
 const goToDetail = (id) => router.push(`/item/${id}`)
-const goToChat = () => {
-  showToast({ message: '私信留言功能由后端B接入', position: 'top' })
+const goToChat = async () => {
+  if (!itemData.value.id) return
+  try {
+    const chat = await ensureChatForItem(itemData.value.id)
+    router.push(`/chat/${chat.id}`)
+  } catch (error) {
+    showFailToast(error.message || '私信会话创建失败')
+  }
 }
 
 const handleShare = async () => {
@@ -197,12 +216,36 @@ const handleShare = async () => {
   }
 }
 
-const toggleFav = () => {
-  showToast({ message: '收藏功能由后端B接入', position: 'top' })
+const toggleFav = async () => {
+  if (!itemData.value.id) return
+  try {
+    if (isFav.value) {
+      await unfavoriteItem(itemData.value.id)
+      isFav.value = false
+      showToast({ message: '已取消收藏', position: 'top' })
+    } else {
+      await favoriteItem(itemData.value.id)
+      isFav.value = true
+      showSuccessToast('已收藏')
+    }
+  } catch (error) {
+    showFailToast(error.message || '收藏操作失败')
+  }
 }
 
-const confirmLock = () => {
+const confirmLock = async () => {
   showConfirm.value = false
-  showToast({ message: '预定锁单功能由后端B接入', position: 'top' })
+  if (!itemData.value.id || !canReserve.value) return
+  try {
+    const order = await reserveItem(itemData.value.id)
+    itemData.value.status = order.itemStatus
+    itemData.value.reservedByMe = true
+    itemData.value.activeOrderId = order.id
+    wantCount.value += 1
+    showSuccessToast('预定成功')
+    router.push(`/chat/${order.conversationId}`)
+  } catch (error) {
+    showFailToast(error.message || '预定失败')
+  }
 }
 </script>

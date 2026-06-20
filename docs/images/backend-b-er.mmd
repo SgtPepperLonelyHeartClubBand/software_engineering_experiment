@@ -1,0 +1,18 @@
+erDiagram
+    users ||--o{ items : publishes
+    users ||--o{ trade_orders : buyer
+    users ||--o{ trade_orders : seller
+    items ||--o{ trade_orders : reserved_by
+
+    users ||--o{ favorites : owns
+    items ||--o{ favorites : collected
+
+    users ||--o{ conversations : buyer
+    users ||--o{ conversations : seller
+    items ||--o{ conversations : about
+    conversations ||--o{ chat_messages : contains
+    chat_messages ||--o{ chat_messages : quotes
+
+    users ||--o{ system_notifications : receives
+    items ||--o{ system_notifications : related
+    conversations ||--o{ system_notifications : related

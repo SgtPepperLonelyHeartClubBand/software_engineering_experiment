@@ -137,15 +137,16 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { showSuccessToast, showToast } from 'vant'
+import { showFailToast, showSuccessToast, showToast } from 'vant'
 import {
   canRecall,
   getChatMeta,
   getMessages,
   getRecallText,
+  loadMessages,
   markChatAsRead,
-  receiveMessage,
   recallMessage,
+  refreshChats,
   sendMessage as storeSendMessage
 } from '../stores/messages'
 
@@ -192,9 +193,15 @@ const scrollToBottom = async () => {
   }
 }
 
-onMounted(() => {
-  markChatAsRead(chatId.value)
-  scrollToBottom()
+onMounted(async () => {
+  try {
+    await refreshChats()
+    await loadMessages(chatId.value)
+    await markChatAsRead(chatId.value)
+    await scrollToBottom()
+  } catch (error) {
+    showFailToast(error.message || '聊天记录加载失败')
+  }
 })
 
 onUnmounted(() => {
@@ -240,26 +247,26 @@ const handleSend = async () => {
   const text = inputText.value.trim()
   if (!text) return
 
-  storeSendMessage(chatId.value, text, quoteTarget.value)
-  inputText.value = ''
-  quoteTarget.value = null
-  await scrollToBottom()
-
-  setTimeout(async () => {
-    receiveMessage(chatId.value, '收到，我稍后回复你～', { incrementUnread: false })
+  try {
+    await storeSendMessage(chatId.value, text, quoteTarget.value)
+    inputText.value = ''
+    quoteTarget.value = null
     await scrollToBottom()
-  }, 1200)
+  } catch (error) {
+    showFailToast(error.message || '发送失败')
+  }
 }
 
-const onMsgAction = (action) => {
+const onMsgAction = async (action) => {
   const msg = activeMsg.value
   if (!msg) return
 
   if (action.name === '撤回') {
-    if (recallMessage(chatId.value, msg.id)) {
+    try {
+      await recallMessage(chatId.value, msg.id)
       showSuccessToast('已撤回')
-    } else {
-      showToast('超过 2 分钟，无法撤回')
+    } catch (error) {
+      showToast(error.message || '超过 2 分钟，无法撤回')
     }
   } else if (action.name === '引用') {
     quoteTarget.value = { ...msg }

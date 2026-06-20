@@ -24,6 +24,8 @@ import java.util.List;
 public class Item {
 
     public static final String STATUS_ON_SALE = "在售";
+    public static final String STATUS_RESERVED = "被预定";
+    public static final String STATUS_COMPLETED = "已完成";
     public static final String STATUS_OFF_SHELF = "已下架";
 
     @Id

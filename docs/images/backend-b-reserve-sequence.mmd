@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant B as 买家
+    participant FE as Vue 前端
+    participant TC as TradeController
+    participant TS as TradeService
+    participant DB as Database
+    participant MS as ConversationService
+    participant NS as NotificationService
+    participant S as 卖家
+
+    B->>FE: 点击“我想要”
+    FE->>TC: POST /api/items/{id}/reserve
+    TC->>TS: reserve(userId, itemId)
+    TS->>DB: 悲观写锁读取商品
+    TS->>DB: 校验并更新商品状态=被预定
+    TS->>DB: 创建 TradeOrder
+    TS->>MS: 创建/复用私信会话
+    TS->>NS: 创建系统通知
+    TC-->>FE: orderId + conversationId
+    FE-->>B: 跳转聊天页
+    NS-->>S: 卖家在消息页看到通知
