@@ -153,8 +153,19 @@ const form = reactive({
   description: ''
 })
 
-const categoryOptions = ['专业书籍', '电子数码', '宿舍日用', '运动户外', '其他闲置']
-const conditionOptions = ['全新', '9成新', '8成新', '有瑕疵']
+const categoryOptions = [
+  { text: '专业书籍', value: '专业书籍' },
+  { text: '电子数码', value: '电子数码' },
+  { text: '宿舍日用', value: '宿舍日用' },
+  { text: '运动户外', value: '运动户外' },
+  { text: '其他闲置', value: '其他闲置' }
+]
+const conditionOptions = [
+  { text: '全新', value: '全新' },
+  { text: '9成新', value: '9成新' },
+  { text: '8成新', value: '8成新' },
+  { text: '有瑕疵', value: '有瑕疵' }
+]
 
 const locationOptions = ref([])
 
